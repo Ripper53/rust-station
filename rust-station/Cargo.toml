@@ -1,0 +1,21 @@
+[package]
+name = "rust-station"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rust-station-core = { path = "../rust-station-core" }
+wasm-bindgen = "0.2.118"
+web-sys = { version = "0.3.95", features = [
+    "Window",
+    "Document",
+    "HtmlElement",
+    "Element",
+    "Node",
+    "HtmlImageElement",
+    "CssStyleDeclaration",
+    "DomTokenList",
+] }

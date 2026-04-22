@@ -1,0 +1,9 @@
+[package]
+name = "rust-station-core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+
+[dependencies]
+thiserror = "2.0.18"

@@ -1,0 +1,18 @@
+body {
+    background-color: black;
+}
+
+.character {
+    position: absolute;
+    image-rendering: pixelated;
+}
+
+.orray {
+    width: 64px;
+    height: 64px;
+}
+
+.oswin {
+    width: 32px;
+    height: 32px;
+}
