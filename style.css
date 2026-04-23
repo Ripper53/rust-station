@@ -1,0 +1,23 @@
+body {
+    overflow: clip;
+    padding: 0px;
+    margin: 0px;
+    width: 100vw;
+    height: 100vh;
+    background-color: black;
+}
+
+.character {
+    position: absolute;
+    image-rendering: pixelated;
+}
+
+.orray {
+    width: 64px;
+    height: 64px;
+}
+
+.oswin {
+    width: 32px;
+    height: 32px;
+}
