@@ -19,9 +19,10 @@ jobs:
           toolchain: stable
 
       - run: cargo install wasm-pack
-      - run: wasm-pack build rust-station --target web
+      - run: wasm-pack build rust-station --target web --out-dir ../web/pkg
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-          publish_dir: ./
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web
