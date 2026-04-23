@@ -17,9 +17,9 @@ pub enum AnimatorState {
 
 impl<'a> Animator<'a> {
     pub fn new(state: AnimatorState, animation: Animation<'a>) -> Self {
-        let anim = animation.frames().iter().cloned().next().unwrap();
-        let mut animation_player = AnimationPlayer::new(anim);
-        for frame in animation.frames().iter().cloned() {
+        let first_frame = animation.frames().get(0).unwrap().clone();
+        let mut animation_player = AnimationPlayer::new(first_frame);
+        for frame in animation.frames().iter().skip(1).cloned() {
             animation_player.frame_queue.push_back(frame);
         }
         Animator {
@@ -27,6 +27,11 @@ impl<'a> Animator<'a> {
             animation_player,
             current_animation: animation,
         }
+    }
+    pub fn set_animation(&mut self, animation: Animation<'a>) {
+        self.current_animation = animation;
+        self.animation_player
+            .set_current_animation(&self.current_animation);
     }
     pub fn current_frame(&self) -> &Frame<'a> {
         &self.animation_player.current_frame
@@ -74,9 +79,6 @@ impl<'a> AnimationPlayer<'a> {
             frame_queue: VecDeque::new(),
             current_duration: dur,
         }
-    }
-    fn current_animation(&self) -> &Frame<'a> {
-        &self.current_frame
     }
     fn set_current_animation(&mut self, animation: &Animation<'a>) {
         for frame in animation.frames().iter().cloned() {
