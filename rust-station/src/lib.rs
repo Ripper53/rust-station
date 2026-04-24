@@ -5,16 +5,18 @@ use rust_station_core::{
     train::{ParallaxUpdateResponse, TrainBackground},
 };
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlDivElement, HtmlImageElement};
+use web_sys::{HtmlDivElement, HtmlElement, HtmlImageElement};
 
 use crate::{
     characters::{AnimatedCharacter, OswinUpdate},
     parallax::ParallaxLayer,
+    train::{TrainBounce, TrainCartVisual},
 };
 
 mod anim;
 mod characters;
 mod parallax;
+mod train;
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -28,7 +30,6 @@ pub fn start() {
         ),
         Gravity::new(Velocity::new(0.0, 50.0)),
     );
-    web_sys::console::log_1(&format!("{:?}", world.bounds()).into());
 
     const OSWINS_COUNT: usize = 10;
     let mut oswins = Vec::with_capacity(OSWINS_COUNT);
@@ -52,6 +53,20 @@ pub fn start() {
         std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = std::rc::Rc::clone(&f);
 
+    let mut train_carts = {
+        let train_carts_elements = document.get_elements_by_class_name("train-cart");
+        let mut train_carts = Vec::with_capacity(train_carts_elements.length() as usize);
+        for i in 0..train_carts_elements.length() {
+            let element = train_carts_elements
+                .item(i)
+                .unwrap()
+                .dyn_into::<HtmlElement>()
+                .unwrap();
+            element.style().set_property("top", "0px").unwrap();
+            train_carts.push(TrainCartVisual::new(element, TrainBounce::new(0.5..4.0)));
+        }
+        train_carts
+    };
     let mut train_background_a =
         TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, world.bounds().width);
     let mut train_background_b = TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, 0.0);
@@ -171,6 +186,9 @@ pub fn start() {
                     layer.update_images(&document, width, 2, z_index);
                 }
             }
+        }
+        for train_cart in train_carts.iter_mut() {
+            train_cart.update(delta_time);
         }
 
         window
