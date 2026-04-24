@@ -2,19 +2,25 @@ use rust_station_core::{
     anim::AnimationDuration,
     characters::Oswin,
     physics::{Bounds, BoxCollider, Gravity, PhysicsDuration, Position, Velocity, World},
+    train::{ParallaxUpdateResponse, TrainBackground},
 };
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlImageElement;
+use web_sys::{HtmlDivElement, HtmlImageElement};
 
-use crate::characters::{AnimatedCharacter, OswinUpdate};
+use crate::{
+    characters::{AnimatedCharacter, OswinUpdate},
+    parallax::ParallaxLayer,
+};
 
 mod anim;
 mod characters;
+mod parallax;
 
 #[wasm_bindgen(start)]
 pub fn start() {
     let window = web_sys::window().unwrap();
-    let body = window.document().unwrap().body().unwrap();
+    let document = window.document().unwrap();
+    let body = document.body().unwrap();
     let mut world = World::new(
         Bounds::new(
             window.inner_width().unwrap().as_f64().unwrap() as f32,
@@ -46,6 +52,65 @@ pub fn start() {
         std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = std::rc::Rc::clone(&f);
 
+    let mut train_background_a =
+        TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, world.bounds().width);
+    let mut train_background_b = TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, 0.0);
+    let generate_parallax_layers = || {
+        let background = document.get_element_by_id("background").unwrap();
+        let div_0 = document
+            .create_element("div")
+            .unwrap()
+            .dyn_into::<HtmlDivElement>()
+            .unwrap();
+        let div_1 = document
+            .create_element("div")
+            .unwrap()
+            .dyn_into::<HtmlDivElement>()
+            .unwrap();
+        let div_2 = document
+            .create_element("div")
+            .unwrap()
+            .dyn_into::<HtmlDivElement>()
+            .unwrap();
+        background.append_child(&div_0).unwrap();
+        background.append_child(&div_1).unwrap();
+        background.append_child(&div_2).unwrap();
+        [
+            ParallaxLayer::new(
+                div_0,
+                vec![
+                    "images/backgrounds/mountains/Mountain0.png",
+                    "images/backgrounds/mountains/Mountain1.png",
+                    "images/backgrounds/mountains/Mountain2.png",
+                    "images/backgrounds/mountains/Mountain3.png",
+                ],
+            ),
+            ParallaxLayer::new(
+                div_1,
+                vec![
+                    "images/backgrounds/mountains/Mountain0.png",
+                    "images/backgrounds/mountains/Mountain1.png",
+                    "images/backgrounds/mountains/Mountain2.png",
+                    "images/backgrounds/mountains/Mountain3.png",
+                ],
+            ),
+            ParallaxLayer::new(
+                div_2,
+                vec![
+                    "images/backgrounds/mountains/Mountain0.png",
+                    "images/backgrounds/mountains/Mountain1.png",
+                    "images/backgrounds/mountains/Mountain2.png",
+                    "images/backgrounds/mountains/Mountain3.png",
+                ],
+            ),
+        ]
+    };
+    let mut parallax_layers_a = generate_parallax_layers();
+    for (i, p) in parallax_layers_a.iter_mut().enumerate() {
+        p.update_position(0.0);
+        p.update_images(&document, world.bounds().width, 16, i);
+    }
+    let mut parallax_layers_b = generate_parallax_layers();
     let mut last_time = 0.0;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move |time: f64| {
         let time = time as f32 / 1000.0;
@@ -74,6 +139,39 @@ pub fn start() {
         }
         std::mem::swap(&mut oswins, &mut oswins_0);
         world.elapsed_duration(PhysicsDuration::new(delta_time));
+        let width = world.bounds().width;
+        train_background_a.set_background_max_position_x(width * 3.0);
+        for (z_index, (layer, response)) in parallax_layers_a
+            .iter_mut()
+            .zip(train_background_a.elapsed_duration(delta_time))
+            .enumerate()
+        {
+            match response {
+                ParallaxUpdateResponse::UpdatePosition(x) => {
+                    layer.update_position(x - width);
+                }
+                ParallaxUpdateResponse::RestartAtPosition(x) => {
+                    layer.update_position(x - width);
+                    layer.update_images(&document, width, 2, z_index);
+                }
+            }
+        }
+        train_background_b.set_background_max_position_x(width * 3.0);
+        for (z_index, (layer, response)) in parallax_layers_b
+            .iter_mut()
+            .zip(train_background_b.elapsed_duration(delta_time))
+            .enumerate()
+        {
+            match response {
+                ParallaxUpdateResponse::UpdatePosition(x) => {
+                    layer.update_position(x - width);
+                }
+                ParallaxUpdateResponse::RestartAtPosition(x) => {
+                    layer.update_position(x - width);
+                    layer.update_images(&document, width, 2, z_index);
+                }
+            }
+        }
 
         window
             .request_animation_frame(f.borrow().as_ref().unwrap().as_ref().unchecked_ref())

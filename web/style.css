@@ -7,6 +7,33 @@ body {
     background-color: black;
 }
 
+img {
+    -webkit-user-drag: none;
+}
+
+#background {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 100vw;
+    height: 100vh;
+}
+
+#background>div {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    bottom: 0px;
+}
+
+#background>div>img {
+    position: absolute;
+    width: 1024px;
+    height: 1024px;
+    image-rendering: pixelated;
+}
+
 .character {
     position: absolute;
     image-rendering: pixelated;
@@ -20,4 +47,21 @@ body {
 .oswin {
     width: 32px;
     height: 32px;
+}
+
+#background {
+    z-index: -1;
+}
+
+.train {
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    bottom: 0px;
+}
+
+.train>.cart {
+    image-rendering: pixelated;
+    width: 512px;
+    height: 320px;
 }
