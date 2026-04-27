@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Albar's Rusty Station</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -12,9 +13,14 @@
     <img class="train-cart" src="images/train_carts/TrainCart0.png">
     <!-- <img class="cart" src="images/train_carts/TrainBackCart.png"> -->
   </div>
+  <div style="position: absolute; left: -400%; bottom: 0px; width: 100%;">
+    <div id="train-tracks"></div>
+  </div>
   <script type="module">
     import init from "./pkg/rust_station.js";
-    await init();
+    window.addEventListener("load", async () => {
+      await init();
+    });
   </script>
 </body>
 </html>
