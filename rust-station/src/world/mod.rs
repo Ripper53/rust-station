@@ -9,8 +9,11 @@ use crate::characters::{AnimatedCharacter, OswinUpdate};
 
 pub mod hostile;
 
-pub fn create_world(body: &HtmlElement, bounds: Bounds, offset: Position) -> WorldRenderer<'_> {
-    web_sys::console::log_1(&format!("{offset:?}").into());
+pub fn create_world<'a, 'r>(
+    body: &'a HtmlElement,
+    bounds: Bounds,
+    offset: Position,
+) -> WorldRenderer<'r> {
     let world = World::new(bounds, Gravity::new(Velocity::new(0.0, 1028.0)));
     WorldRenderer::new(world, body, offset)
 }
@@ -48,6 +51,12 @@ impl<'a> WorldRenderer<'a> {
             oswins_switch,
             offset,
         }
+    }
+    pub fn set_offset(&mut self, position: Position) {
+        self.offset = position;
+    }
+    pub fn set_bounds(&mut self, bounds: Bounds) {
+        self.world.set_bounds(bounds)
     }
     pub fn update(&mut self, delta_time: f32) {
         self.world

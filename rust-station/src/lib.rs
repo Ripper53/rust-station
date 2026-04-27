@@ -22,11 +22,6 @@ pub fn start() {
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let body = document.body().unwrap();
-    {
-        let w = window.inner_width().unwrap().as_f64().unwrap();
-        let h = window.inner_height().unwrap().as_f64().unwrap();
-        web_sys::console::log_1(&format!("init bounds: {w} x {h}").into());
-    }
     let width = window.inner_width().unwrap().as_f64().unwrap() as f32;
     let height = window.inner_height().unwrap().as_f64().unwrap() as f32;
 
@@ -34,7 +29,7 @@ pub fn start() {
         std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = std::rc::Rc::clone(&f);
 
-    let mut train_carts = {
+    let train_carts = {
         let train_carts_elements = document.get_elements_by_class_name("train-cart");
         let mut train_carts = Vec::with_capacity(train_carts_elements.length() as usize);
         for i in 0..train_carts_elements.length() {
@@ -131,18 +126,31 @@ pub fn start() {
         Position::new(512.0, train_carts[1].pos_y() + 64.0 - 4.0),
     );
     let card_world_1 = std::rc::Rc::new(std::cell::RefCell::new(card_world_1));
+    let train_carts = std::rc::Rc::new(std::cell::RefCell::new(train_carts));
     let hostile_world = {
         let hostile_world = std::rc::Rc::new(std::cell::RefCell::new(HostileWorld::new(
             Bounds::new(width, height),
         )));
         let win = web_sys::window().unwrap();
         let hostile_world_pointer = std::rc::Rc::clone(&hostile_world);
+        let train_carts = std::rc::Rc::clone(&train_carts);
+        let card_world_0 = std::rc::Rc::clone(&card_world_0);
+        let card_world_1 = std::rc::Rc::clone(&card_world_1);
         let closure = Closure::<dyn FnMut()>::new(move || {
             let bounds = Bounds::new(
                 win.inner_width().unwrap().as_f64().unwrap() as f32,
                 win.inner_height().unwrap().as_f64().unwrap() as f32,
             );
             hostile_world_pointer.borrow_mut().set_bounds(bounds);
+            let train_carts = train_carts.borrow();
+            let train_cart = train_carts.get(0).unwrap();
+            card_world_0
+                .borrow_mut()
+                .set_offset(Position::new(128.0, train_cart.pos_y() + 64.0 - 4.0));
+            let train_cart = train_carts.get(1).unwrap();
+            card_world_1
+                .borrow_mut()
+                .set_offset(Position::new(512.0, train_cart.pos_y() + 64.0 - 4.0));
         });
         window
             .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
@@ -216,8 +224,11 @@ pub fn start() {
                 }
             }
         }
-        for train_cart in train_carts.iter_mut() {
-            train_cart.update(delta_time);
+        {
+            let mut train_carts = train_carts.borrow_mut();
+            for train_cart in train_carts.iter_mut() {
+                train_cart.update(delta_time);
+            }
         }
 
         window
