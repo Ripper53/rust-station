@@ -14,13 +14,25 @@ impl<R: SampleRange<f32> + Clone> TrainCartVisual<R> {
     pub fn new(holder: HtmlElement, bounce: TrainBounce<R>) -> Self {
         TrainCartVisual { holder, bounce }
     }
+    pub fn pos_x(&self) -> f32 {
+        self.holder.get_bounding_client_rect().x() as f32
+    }
+    pub fn pos_y(&self) -> f32 {
+        self.holder.get_bounding_client_rect().y() as f32
+    }
+    pub fn width(&self) -> f32 {
+        self.holder.get_bounding_client_rect().width() as f32
+    }
+    pub fn height(&self) -> f32 {
+        self.holder.get_bounding_client_rect().height() as f32
+    }
     pub fn update(&mut self, delta_time: f32) {
         match self.bounce.update(delta_time) {
             BounceUpdateResponse::Idle => {
                 self.holder.style().set_property("top", "0px").unwrap();
             }
             BounceUpdateResponse::Bounce => {
-                self.holder.style().set_property("top", "-8px").unwrap();
+                self.holder.style().set_property("top", "-4px").unwrap();
             }
         }
     }

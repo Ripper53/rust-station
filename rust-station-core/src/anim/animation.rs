@@ -45,7 +45,7 @@ impl<'a> Frame<'a> {
 pub struct AnimationDuration(f32);
 
 impl AnimationDuration {
-    pub fn new(duration: f32) -> Self {
+    pub const fn new(duration: f32) -> Self {
         AnimationDuration(duration)
     }
 }

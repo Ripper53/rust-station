@@ -44,7 +44,7 @@ impl<'a> ParallaxLayer<'a> {
                 let src = self.generated_images.choose(&mut rng).unwrap();
                 img.set_src(src);
                 img.style()
-                    .set_property("z-index", &format!("{z_index}"))
+                    .set_property("z-index", &z_index.to_string())
                     .unwrap();
                 img.style()
                     .set_property(

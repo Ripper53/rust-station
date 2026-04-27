@@ -60,6 +60,12 @@ impl World {
             None
         }
     }
+    pub fn get_dynamic_positions_mut(
+        &mut self,
+        entity_id: EntityID,
+    ) -> Option<&mut (Position, Velocity)> {
+        self.positions_and_velocities.get_mut(&entity_id)
+    }
     pub fn set_bounds(&mut self, bounds: Bounds) {
         self.bounds = bounds;
         for (entity_id, position) in self.static_positions.iter_mut() {
