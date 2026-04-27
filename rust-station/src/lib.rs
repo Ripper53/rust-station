@@ -23,6 +23,11 @@ pub fn start() {
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let body = document.body().unwrap();
+    {
+        let w = window.inner_width().unwrap().as_f64().unwrap();
+        let h = window.inner_height().unwrap().as_f64().unwrap();
+        web_sys::console::log_1(&format!("init bounds: {w} x {h}").into());
+    }
     let mut world = World::new(
         Bounds::new(
             window.inner_width().unwrap().as_f64().unwrap() as f32,
@@ -70,6 +75,8 @@ pub fn start() {
     let mut train_background_a =
         TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, world.bounds().width);
     let mut train_background_b = TrainBackground::<3>::new(world.bounds().width, 2048.0, 0.5, 0.0);
+    let mut train_tracks_background =
+        TrainBackground::<1>::new(world.bounds().width, 2048.0, 1.0, 0.0);
     let generate_parallax_layers = || {
         let background = document.get_element_by_id("background").unwrap();
         let div_0 = document
@@ -121,13 +128,37 @@ pub fn start() {
         ]
     };
     let mut parallax_layers_a = generate_parallax_layers();
+    let train_tracks_img = document
+        .get_element_by_id("train-tracks")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
     for (i, p) in parallax_layers_a.iter_mut().enumerate() {
         p.update_position(0.0);
         p.update_images(&document, world.bounds().width, 16, i);
     }
     let mut parallax_layers_b = generate_parallax_layers();
     let mut last_time = 0.0;
+    let world = std::rc::Rc::new(std::cell::RefCell::new(world));
+    {
+        let world = std::rc::Rc::clone(&world);
+        let win = web_sys::window().unwrap();
+        let closure = Closure::<dyn FnMut()>::new(move || {
+            let bounds = Bounds::new(
+                win.inner_width().unwrap().as_f64().unwrap() as f32,
+                win.inner_height().unwrap().as_f64().unwrap() as f32,
+            );
+            let r = win.device_pixel_ratio();
+            web_sys::console::log_1(&format!("{bounds:?} - {r:?}").into());
+            world.borrow_mut().set_bounds(bounds);
+        });
+        window
+            .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
+    }
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move |time: f64| {
+        let mut world = world.borrow_mut();
         let time = time as f32 / 1000.0;
         let delta_time = time - last_time;
         last_time = time;
@@ -184,6 +215,23 @@ pub fn start() {
                 ParallaxUpdateResponse::RestartAtPosition(x) => {
                     layer.update_position(x - width);
                     layer.update_images(&document, width, 2, z_index);
+                }
+            }
+        }
+        train_tracks_background.set_background_max_position_x(width * 3.0);
+        for response in train_tracks_background.elapsed_duration(delta_time) {
+            match response {
+                ParallaxUpdateResponse::UpdatePosition(x) => {
+                    train_tracks_img
+                        .style()
+                        .set_property("left", &format!("{}px", x - width))
+                        .unwrap();
+                }
+                ParallaxUpdateResponse::RestartAtPosition(x) => {
+                    train_tracks_img
+                        .style()
+                        .set_property("left", &format!("{}px", x - width))
+                        .unwrap();
                 }
             }
         }

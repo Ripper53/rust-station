@@ -1,9 +1,13 @@
+html,
 body {
     overflow: clip;
+    width: 100lvw;
+    height: 100lvh;
     padding: 0px;
     margin: 0px;
-    width: 100vw;
-    height: 100vh;
+}
+
+body {
     background-color: black;
 }
 
@@ -15,14 +19,14 @@ img {
     position: absolute;
     left: 0px;
     top: 0px;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
 }
 
 #background>div {
     display: block;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     position: absolute;
     bottom: 0px;
 }
@@ -57,7 +61,7 @@ img {
     position: absolute;
     display: flex;
     flex-direction: row;
-    bottom: 0px;
+    bottom: 8px;
 }
 
 .train>.train-cart {
@@ -65,4 +69,16 @@ img {
     image-rendering: pixelated;
     width: 512px;
     height: 320px;
+}
+
+#train-tracks {
+    position: absolute;
+    bottom: 0px;
+    z-index: 100;
+    width: 800%;
+    height: 16px;
+    background-image: url("images/train_carts/TrainTracks.png");
+    background-repeat: repeat-x;
+    background-size: 256px 16px;
+    image-rendering: pixelated;
 }
