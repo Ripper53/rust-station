@@ -11,6 +11,8 @@ pub use entity_builder::*;
 pub use position::*;
 pub use velocity::*;
 
+use crate::DeltaTime;
+
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct EntityID(usize);
 
@@ -60,6 +62,17 @@ impl World {
             None
         }
     }
+    pub fn remove_entity(&mut self, entity_id: EntityID) {
+        let _ = self.static_positions.remove(&entity_id);
+        let _ = self.positions_and_velocities.remove(&entity_id);
+        let _ = self.colliders.remove(&entity_id);
+    }
+    pub fn get_collider(&self, entity_id: EntityID) -> Option<BoxCollider> {
+        self.colliders.get(&entity_id).copied()
+    }
+    pub fn get_dynamic_position(&self, entity_id: EntityID) -> Option<(Position, Velocity)> {
+        self.positions_and_velocities.get(&entity_id).copied()
+    }
     pub fn get_dynamic_positions_mut(
         &mut self,
         entity_id: EntityID,
@@ -102,24 +115,28 @@ impl World {
             };
         }
     }
-    pub fn elapsed_duration(&mut self, delta_time: PhysicsDuration) {
+    pub fn elapsed_duration(&mut self, delta_time: PhysicsDeltaTime) {
         for (entity_id, (position, velocity)) in self.positions_and_velocities.iter_mut() {
-            *velocity += self.gravity.0 * delta_time.0;
-            let movement = *velocity * delta_time.0;
+            *velocity += self.gravity.0 * delta_time.0.value();
+            let movement = *velocity * delta_time.0.value();
             *position = if let Some(collider) = self.colliders.get(entity_id) {
                 let x = if movement.x > 0.0 {
                     let mut new_pos = position.x + movement.x;
                     let max = self.bounds.width - collider.size_x;
                     if new_pos >= max {
                         new_pos = max;
-                        velocity.x = 0.0;
+                        if velocity.x > 0.0 {
+                            velocity.x = 0.0;
+                        }
                     }
                     new_pos
                 } else {
                     let mut new_pos = position.x + movement.x;
                     if new_pos <= 0.0 {
                         new_pos = 0.0;
-                        velocity.x = 0.0;
+                        if velocity.x < 0.0 {
+                            velocity.x = 0.0;
+                        }
                     }
                     new_pos
                 };
@@ -128,14 +145,18 @@ impl World {
                     let max = self.bounds.height - collider.size_y;
                     if new_pos >= max {
                         new_pos = max;
-                        velocity.y = 0.0;
+                        if velocity.y > 0.0 {
+                            velocity.y = 0.0;
+                        }
                     }
                     new_pos
                 } else {
                     let mut new_pos = position.y + movement.y;
                     if new_pos <= 0.0 {
                         new_pos = 0.0;
-                        velocity.y = 0.0;
+                        if velocity.y < 0.0 {
+                            velocity.y = 0.0;
+                        }
                     }
                     new_pos
                 };
@@ -145,14 +166,18 @@ impl World {
                     let mut new_pos = position.x + movement.x;
                     if new_pos >= self.bounds.width {
                         new_pos = self.bounds.width;
-                        velocity.x = 0.0;
+                        if velocity.x > 0.0 {
+                            velocity.x = 0.0;
+                        }
                     }
                     new_pos
                 } else {
                     let mut new_pos = position.x + movement.x;
                     if new_pos <= 0.0 {
                         new_pos = 0.0;
-                        velocity.x = 0.0;
+                        if velocity.x < 0.0 {
+                            velocity.x = 0.0;
+                        }
                     }
                     new_pos
                 };
@@ -160,14 +185,18 @@ impl World {
                     let mut new_pos = position.y + movement.y;
                     if new_pos >= self.bounds.height {
                         new_pos = self.bounds.height;
-                        velocity.y = 0.0;
+                        if velocity.y > 0.0 {
+                            velocity.y = 0.0;
+                        }
                     }
                     new_pos
                 } else {
                     let mut new_pos = position.y + movement.y;
                     if new_pos <= 0.0 {
                         new_pos = 0.0;
-                        velocity.y = 0.0;
+                        if velocity.y < 0.0 {
+                            velocity.y = 0.0;
+                        }
                     }
                     new_pos
                 };
@@ -175,12 +204,35 @@ impl World {
             };
         }
     }
+    pub fn nearest_target(&self, position: Position) -> Option<Position> {
+        let mut nearest_target: Option<(Position, DistanceSquared)> = None;
+        for new_pos in self.static_positions.values().copied() {
+            if let Some((nt, dis)) = &mut nearest_target {
+                if nt.distance_squared(new_pos) < *dis {
+                    *nt = new_pos;
+                }
+            } else {
+                nearest_target = Some((new_pos, position.distance_squared(new_pos)));
+            }
+        }
+        for (new_pos, ..) in self.positions_and_velocities.values() {
+            let new_pos = *new_pos;
+            if let Some((nt, dis)) = &mut nearest_target {
+                if nt.distance_squared(new_pos) < *dis {
+                    *nt = new_pos;
+                }
+            } else {
+                nearest_target = Some((new_pos, position.distance_squared(new_pos)));
+            }
+        }
+        nearest_target.map(|(pos, _dis)| pos)
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
-pub struct PhysicsDuration(f32);
-impl PhysicsDuration {
-    pub const fn new(duration: f32) -> Self {
-        PhysicsDuration(duration)
+pub struct PhysicsDeltaTime(DeltaTime);
+impl PhysicsDeltaTime {
+    pub const fn new(duration: DeltaTime) -> Self {
+        PhysicsDeltaTime(duration)
     }
 }

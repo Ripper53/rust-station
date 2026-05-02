@@ -1,7 +1,11 @@
-mod oswin;
-pub use oswin::*;
-
 use crate::anim::Animator;
+
+mod first_minion;
+mod oswin;
+mod turret;
+pub use first_minion::*;
+pub use oswin::*;
+pub use turret::*;
 
 pub trait GetCharacterAnimator<'a> {
     fn animator(&self) -> &Animator<'a>;

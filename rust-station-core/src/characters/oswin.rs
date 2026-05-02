@@ -1,4 +1,5 @@
 use crate::{
+    DeltaTime,
     anim::{Animation, AnimationDuration, Animator, AnimatorState, Frame},
     characters::GetCharacterAnimator,
     physics::{EntityID, World},
@@ -99,7 +100,7 @@ impl OswinBehavior {
         &mut self,
         world: &mut World,
         entity_id: EntityID,
-        delta_time: f32,
+        delta_time: DeltaTime,
     ) -> (OswinState, Option<WalkingDirection>) {
         let width = world.bounds().width;
         let Some((position, velocity)) = world.get_dynamic_positions_mut(entity_id) else {
@@ -108,7 +109,7 @@ impl OswinBehavior {
         match &mut self.state {
             OswinBehaviorState::Idle { wait_timer } => {
                 if *wait_timer > 0.0 {
-                    *wait_timer -= delta_time;
+                    *wait_timer -= delta_time.value();
                     (OswinState::Idle, None)
                 } else {
                     let direction = if rand::random_bool(0.5) {
@@ -129,7 +130,7 @@ impl OswinBehavior {
                 direction,
             } => {
                 if *walking_timer > 0.0 {
-                    *walking_timer -= delta_time;
+                    *walking_timer -= delta_time.value();
                     let x = position.x;
                     match direction {
                         WalkingDirection::Right => {

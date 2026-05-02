@@ -1,4 +1,5 @@
 use rand::{RngExt, distr::uniform::SampleRange};
+use rust_station_core::DeltaTime;
 
 #[derive(Debug)]
 pub struct TrainBounce<R> {
@@ -21,12 +22,12 @@ impl<R: SampleRange<f32> + Clone> TrainBounce<R> {
             pause_timer: 0.0,
         }
     }
-    pub fn update(&mut self, delta_time: f32) -> BounceUpdateResponse {
+    pub fn update(&mut self, delta_time: DeltaTime) -> BounceUpdateResponse {
         match self.state {
             State::Idle => {
                 if self.pause_timer > 0.0 {
-                    self.pause_timer -= delta_time;
-                    BounceUpdateResponse::Idle
+                    self.pause_timer -= delta_time.value();
+                    BounceUpdateResponse::Unchanged
                 } else {
                     self.state = State::Bounce;
                     self.pause_timer = 0.1;
@@ -35,8 +36,8 @@ impl<R: SampleRange<f32> + Clone> TrainBounce<R> {
             }
             State::Bounce => {
                 if self.pause_timer > 0.0 {
-                    self.pause_timer -= delta_time;
-                    BounceUpdateResponse::Bounce
+                    self.pause_timer -= delta_time.value();
+                    BounceUpdateResponse::Unchanged
                 } else {
                     self.state = State::Idle;
                     self.pause_timer = rand::rng().random_range(self.pause_time.clone());
@@ -49,6 +50,7 @@ impl<R: SampleRange<f32> + Clone> TrainBounce<R> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum BounceUpdateResponse {
+    Unchanged,
     Idle,
     Bounce,
 }

@@ -1,7 +1,7 @@
 mod cart;
 pub use cart::*;
 
-use crate::physics::PhysicsDuration;
+use crate::{DeltaTime, physics::PhysicsDeltaTime};
 
 #[derive(Debug)]
 pub struct Train {
@@ -16,7 +16,7 @@ impl Train {
             active_card_index: 0,
         }
     }
-    pub fn update(&mut self, delta_time: PhysicsDuration) {
+    pub fn update(&mut self, delta_time: PhysicsDeltaTime) {
         if let Some(train_cart) = self.carts.get_mut(self.active_card_index) {
             train_cart.world_mut().elapsed_duration(delta_time);
         }
@@ -43,11 +43,11 @@ impl<const BACKGROUND_LAYER_COUNT: usize> TrainBackground<BACKGROUND_LAYER_COUNT
     }
     pub fn elapsed_duration(
         &mut self,
-        delta_time: f32,
+        delta_time: DeltaTime,
     ) -> impl Iterator<Item = ParallaxUpdateResponse> {
         struct I<'a, II: Iterator<Item = (usize, &'a mut f32)>> {
             iter: II,
-            delta_time: f32,
+            delta_time: DeltaTime,
             speed: f32,
             parallax_amount: f32,
             background_max_position_x: f32,
@@ -56,8 +56,10 @@ impl<const BACKGROUND_LAYER_COUNT: usize> TrainBackground<BACKGROUND_LAYER_COUNT
             type Item = ParallaxUpdateResponse;
             fn next(&mut self) -> Option<Self::Item> {
                 if let Some((i, x)) = self.iter.next() {
-                    let new_x =
-                        *x + self.speed * self.delta_time * ((i + 1) as f32 * self.parallax_amount);
+                    let new_x = *x
+                        + self.speed
+                            * self.delta_time.value()
+                            * ((i + 1) as f32 * self.parallax_amount);
                     if new_x > self.background_max_position_x {
                         *x = new_x % self.background_max_position_x;
                         Some(ParallaxUpdateResponse::RestartAtPosition(*x))

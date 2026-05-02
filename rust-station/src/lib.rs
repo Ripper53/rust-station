@@ -1,4 +1,6 @@
 use rust_station_core::{
+    DeltaTime,
+    commands::create_command_channel,
     physics::{Bounds, Position},
     train::{ParallaxUpdateResponse, TrainBackground},
 };
@@ -6,6 +8,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::{HtmlDivElement, HtmlElement};
 
 use crate::{
+    anim::DamageFlashAnimator,
+    commands::WorldCommand,
     parallax::ParallaxLayer,
     train::{TrainBounce, TrainCartVisual},
     world::{create_world, hostile::HostileWorld},
@@ -13,6 +17,7 @@ use crate::{
 
 mod anim;
 mod characters;
+mod commands;
 mod parallax;
 mod train;
 mod world;
@@ -127,10 +132,25 @@ pub fn start() {
     );
     let card_world_1 = std::rc::Rc::new(std::cell::RefCell::new(card_world_1));
     let train_carts = std::rc::Rc::new(std::cell::RefCell::new(train_carts));
+    let (command_sender, command_receiver) = create_command_channel();
     let hostile_world = {
-        let hostile_world = std::rc::Rc::new(std::cell::RefCell::new(HostileWorld::new(
+        let train_carts_for_getter = std::rc::Rc::clone(&train_carts);
+        let get_train_cart_positions = move || {
+            let t = train_carts_for_getter.borrow();
+            let t0 = t.get(0).unwrap();
+            let t1 = t.get(1).unwrap();
+            let t0_s = Bounds::new(t0.width() - 16.0, t0.height());
+            let t1_s = Bounds::new(t1.width() - 16.0, t1.height());
+            let t0 = Position::new(t0.pos_x() + 8.0, t0.pos_y());
+            let t1 = Position::new(t1.pos_x() - 8.0, t1.pos_y());
+            [(t0, t0_s), (t1, t1_s)]
+        };
+
+        let hostile_world = std::rc::Rc::new(std::cell::RefCell::new(Some(HostileWorld::new(
+            command_sender.clone(),
             Bounds::new(width, height),
-        )));
+            get_train_cart_positions(),
+        ))));
         let win = web_sys::window().unwrap();
         let hostile_world_pointer = std::rc::Rc::clone(&hostile_world);
         let train_carts = std::rc::Rc::clone(&train_carts);
@@ -141,7 +161,16 @@ pub fn start() {
                 win.inner_width().unwrap().as_f64().unwrap() as f32,
                 win.inner_height().unwrap().as_f64().unwrap() as f32,
             );
-            hostile_world_pointer.borrow_mut().set_bounds(bounds);
+            hostile_world_pointer
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .set_bounds(bounds);
+            hostile_world_pointer
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .set_train_cart_position(get_train_cart_positions());
             let train_carts = train_carts.borrow();
             let train_cart = train_carts.get(0).unwrap();
             card_world_0
@@ -160,7 +189,7 @@ pub fn start() {
     };
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move |time: f64| {
         let time = time as f32 / 1000.0;
-        let delta_time = time - last_time;
+        let delta_time = DeltaTime::new(time - last_time);
         last_time = time;
         {
             let mut world = card_world_0.borrow_mut();
@@ -171,8 +200,9 @@ pub fn start() {
             world.update(delta_time);
         }
         {
-            let mut hostile_world = hostile_world.borrow_mut();
-            hostile_world.update(delta_time);
+            let mut hw = hostile_world.borrow_mut().take().unwrap();
+            hw = hw.update(delta_time, &body);
+            *hostile_world.borrow_mut() = Some(hw);
         }
         let width = window.inner_width().unwrap().as_f64().unwrap() as f32;
         train_background_a.set_background_max_position_x(width * 3.0);
@@ -228,6 +258,33 @@ pub fn start() {
             let mut train_carts = train_carts.borrow_mut();
             for train_cart in train_carts.iter_mut() {
                 train_cart.update(delta_time);
+            }
+        }
+
+        let mut train_carts_flash = {
+            let train_carts_flash_elements =
+                document.get_elements_by_class_name("train-cart-flash");
+            let mut train_carts_flash =
+                Vec::with_capacity(train_carts_flash_elements.length() as usize);
+            for i in 0..train_carts_flash_elements.length() {
+                let element = train_carts_flash_elements
+                    .item(i)
+                    .unwrap()
+                    .dyn_into::<web_sys::HtmlImageElement>()
+                    .unwrap();
+                train_carts_flash.push(DamageFlashAnimator::new(element));
+            }
+            train_carts_flash
+        };
+
+        for train_cart_flash in train_carts_flash.iter_mut() {
+            train_cart_flash.update(delta_time);
+        }
+        while let Some(command) = command_receiver.receive() {
+            match command {
+                WorldCommand::DamageTrainCart(id) => {
+                    train_carts_flash.get_mut(id.index()).unwrap().play();
+                }
             }
         }
 

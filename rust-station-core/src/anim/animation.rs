@@ -1,3 +1,5 @@
+use crate::DeltaTime;
+
 #[derive(Debug, Clone)]
 pub struct Animation<'a> {
     frames: Vec<Frame<'a>>,
@@ -56,8 +58,28 @@ impl std::ops::AddAssign for AnimationDuration {
     }
 }
 
+impl std::ops::AddAssign<AnimationDeltaTime> for AnimationDuration {
+    fn add_assign(&mut self, rhs: AnimationDeltaTime) {
+        self.0 += rhs.0.0;
+    }
+}
+
 impl std::ops::SubAssign for AnimationDuration {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
+    }
+}
+
+impl std::ops::SubAssign<AnimationDeltaTime> for AnimationDuration {
+    fn sub_assign(&mut self, rhs: AnimationDeltaTime) {
+        self.0 -= rhs.0.0;
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+pub struct AnimationDeltaTime(DeltaTime);
+impl AnimationDeltaTime {
+    pub const fn new(delta_time: DeltaTime) -> Self {
+        AnimationDeltaTime(delta_time)
     }
 }

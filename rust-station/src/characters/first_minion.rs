@@ -1,13 +1,13 @@
-use rust_station_core::{anim::AnimationDeltaTime, characters::Oswin};
+use rust_station_core::{anim::AnimationDeltaTime, characters::FirstMinion};
 use web_sys::HtmlImageElement;
 
 use crate::anim::{UpdateAnim, UpdateAnimator};
 
-pub trait OswinUpdate {
+pub trait FirstMinionUpdate {
     fn update(self, elapsed_duration: AnimationDeltaTime, image: &mut HtmlImageElement) -> Self;
 }
 
-impl<'a> OswinUpdate for Oswin<'a> {
+impl<'a> FirstMinionUpdate for FirstMinion<'a> {
     fn update(
         mut self,
         elapsed_duration: AnimationDeltaTime,

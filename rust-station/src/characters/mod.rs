@@ -1,7 +1,10 @@
-mod oswin;
-pub use oswin::*;
 use rust_station_core::characters::GetCharacterAnimator;
 use web_sys::HtmlImageElement;
+
+mod first_minion;
+mod oswin;
+pub use first_minion::*;
+pub use oswin::*;
 
 #[derive(Debug)]
 pub struct AnimatedCharacter<T> {

@@ -3,6 +3,8 @@ use crate::{
     characters::{Character, Health, HealthType},
 };
 
+pub mod wave;
+
 pub fn create_first_minion<'a>() -> (Animator<'a>, Character) {
     let animator = Animator::new(
         AnimatorState::Loop,

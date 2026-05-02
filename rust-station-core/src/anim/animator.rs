@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::anim::{Animation, AnimationDuration, Frame};
+use crate::anim::{Animation, AnimationDeltaTime, AnimationDuration, Frame};
 
 #[derive(Debug)]
 pub struct Animator<'a> {
@@ -36,8 +36,11 @@ impl<'a> Animator<'a> {
     pub fn current_frame(&self) -> &Frame<'a> {
         &self.animation_player.current_frame
     }
-    pub fn elapsed_duration(&mut self, duration: AnimationDuration) -> AnimatorUpdateResponse<'a> {
-        match self.animation_player.elapsed_duration(duration) {
+    pub fn elapsed_duration(
+        &mut self,
+        delta_time: AnimationDeltaTime,
+    ) -> AnimatorUpdateResponse<'a> {
+        match self.animation_player.elapsed_duration(delta_time) {
             AnimationPlayerUpdateResponse::UnchangedAnimation => {
                 AnimatorUpdateResponse::UnchangedAnimation
             }
@@ -88,9 +91,9 @@ impl<'a> AnimationPlayer<'a> {
     }
     fn elapsed_duration(
         &mut self,
-        duration: AnimationDuration,
+        delta_time: AnimationDeltaTime,
     ) -> AnimationPlayerUpdateResponse<'a> {
-        self.current_duration += duration;
+        self.current_duration += delta_time;
         let dur = self.current_frame.duration();
         if self.current_duration > dur {
             self.current_duration -= dur;
