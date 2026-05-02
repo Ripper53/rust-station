@@ -1,7 +1,7 @@
+use crate::{DeltaTime, physics::PhysicsDeltaTime};
+
 mod cart;
 pub use cart::*;
-
-use crate::{DeltaTime, physics::PhysicsDeltaTime};
 
 #[derive(Debug)]
 pub struct Train {
