@@ -96,7 +96,7 @@ impl World {
         }
     }
     pub fn remove_entity(&mut self, entity_id: EntityID) {
-        let mut entities = self.entities.get_mut(entity_id.0).unwrap();
+        let entities = self.entities.get_mut(entity_id.0).unwrap();
         entities.tag = EntityTag::NONE;
         self.free_entity_ids.push(entity_id);
     }
