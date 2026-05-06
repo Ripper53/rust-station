@@ -84,7 +84,7 @@ img {
 }
 
 .train>.train-cart>.weapon {
-    position: absolute;
+    position: fixed;
     width: 64px;
     height: 64px;
 }
@@ -116,4 +116,11 @@ img {
     background-repeat: repeat-x;
     background-size: 256px 16px;
     image-rendering: pixelated;
+}
+
+.projectile {
+    position: absolute;
+    image-rendering: pixelated;
+    width: 16px;
+    height: 16px;
 }
