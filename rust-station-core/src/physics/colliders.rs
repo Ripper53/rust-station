@@ -1,6 +1,6 @@
 use crate::physics::Position;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct BoxCollider {
     pub size_x: f32,
     pub size_y: f32,

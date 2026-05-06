@@ -1,7 +1,7 @@
 use rust_station_core::{
     DeltaTime,
     commands::create_command_channel,
-    physics::{Bounds, Position},
+    physics::{Bounds, Position, ProjectileSpeed, RadiansAngle, Speed},
     train::{ParallaxUpdateResponse, TrainBackground},
 };
 use wasm_bindgen::prelude::*;
@@ -11,7 +11,7 @@ use crate::{
     anim::DamageFlashAnimator,
     commands::WorldCommand,
     parallax::ParallaxLayer,
-    train::{TrainBounce, TrainCartVisual},
+    train::{TrainBounce, TrainCartVisual, TurretVisual},
     world::{create_world, hostile::HostileWorld},
 };
 
@@ -187,6 +187,51 @@ pub fn start() {
         closure.forget();
         hostile_world
     };
+
+    let mut train_carts_flash = {
+        let train_carts_flash_elements = document.get_elements_by_class_name("train-cart-flash");
+        let mut train_carts_flash =
+            Vec::with_capacity(train_carts_flash_elements.length() as usize);
+        for i in 0..train_carts_flash_elements.length() {
+            let element = train_carts_flash_elements
+                .item(i)
+                .unwrap()
+                .dyn_into::<web_sys::HtmlImageElement>()
+                .unwrap();
+            train_carts_flash.push(DamageFlashAnimator::new(element));
+        }
+        train_carts_flash
+    };
+    let mut turret_weapons = {
+        let mut world = hostile_world.borrow_mut().take().unwrap();
+        let (w, entity_id_a) = world
+            .world
+            .builder()
+            .turret()
+            .add_position(Position::new(196.0, 4.0))
+            .add_angle(RadiansAngle::new(0.0))
+            .add_rotation_speed(Speed::new(1.0))
+            .add_projectile_speed(ProjectileSpeed::new(Speed::new(4.0)))
+            .finish();
+        let (w, entity_id_b) = w
+            .builder()
+            .turret()
+            .add_position(Position::new(360.0, 4.0))
+            .add_angle(RadiansAngle::new(0.0))
+            .add_rotation_speed(Speed::new(1.0))
+            .add_projectile_speed(ProjectileSpeed::new(Speed::new(4.0)))
+            .finish();
+        world.world = w;
+        *hostile_world.borrow_mut() = Some(world);
+        let train_carts = train_carts.borrow();
+        let train_cart = train_carts.get(0).unwrap();
+        let train_cart = train_cart.holder();
+        let train_weapons = vec![
+            (entity_id_a, TurretVisual::new(&document, train_cart)),
+            (entity_id_b, TurretVisual::new(&document, train_cart)),
+        ];
+        train_weapons
+    };
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move |time: f64| {
         let time = time as f32 / 1000.0;
         let delta_time = DeltaTime::new(time - last_time);
@@ -202,6 +247,9 @@ pub fn start() {
         {
             let mut hw = hostile_world.borrow_mut().take().unwrap();
             hw = hw.update(delta_time, &body);
+            for (entity_id, turret) in turret_weapons.iter_mut() {
+                turret.update(*entity_id, &hw.world);
+            }
             *hostile_world.borrow_mut() = Some(hw);
         }
         let width = window.inner_width().unwrap().as_f64().unwrap() as f32;
@@ -260,22 +308,6 @@ pub fn start() {
                 train_cart.update(delta_time);
             }
         }
-
-        let mut train_carts_flash = {
-            let train_carts_flash_elements =
-                document.get_elements_by_class_name("train-cart-flash");
-            let mut train_carts_flash =
-                Vec::with_capacity(train_carts_flash_elements.length() as usize);
-            for i in 0..train_carts_flash_elements.length() {
-                let element = train_carts_flash_elements
-                    .item(i)
-                    .unwrap()
-                    .dyn_into::<web_sys::HtmlImageElement>()
-                    .unwrap();
-                train_carts_flash.push(DamageFlashAnimator::new(element));
-            }
-            train_carts_flash
-        };
 
         for train_cart_flash in train_carts_flash.iter_mut() {
             train_cart_flash.update(delta_time);

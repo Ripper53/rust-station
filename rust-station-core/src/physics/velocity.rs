@@ -1,6 +1,6 @@
 use crate::physics::Position;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Velocity {
     pub x: f32,
     pub y: f32,

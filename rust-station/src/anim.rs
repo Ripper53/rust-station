@@ -52,7 +52,7 @@ impl DamageFlashAnimator {
         self.img.style().set_property("opacity", "1").unwrap();
     }
     pub fn update(&mut self, delta_time: DeltaTime) {
-        self.opacity = (self.opacity - delta_time.value()).max(0.0);
+        self.opacity = (self.opacity - delta_time.value() * 8.0).max(0.0);
         self.img
             .style()
             .set_property("opacity", &self.opacity.to_string())

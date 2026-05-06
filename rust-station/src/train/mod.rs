@@ -2,8 +2,10 @@ use rand::distr::uniform::SampleRange;
 use rust_station_core::DeltaTime;
 use web_sys::HtmlElement;
 
-pub use bounce::*;
 mod bounce;
+mod turret;
+pub use bounce::*;
+pub use turret::*;
 
 #[derive(Debug)]
 pub struct TrainCartVisual<R> {
@@ -14,6 +16,9 @@ pub struct TrainCartVisual<R> {
 impl<R: SampleRange<f32> + Clone> TrainCartVisual<R> {
     pub fn new(holder: HtmlElement, bounce: TrainBounce<R>) -> Self {
         TrainCartVisual { holder, bounce }
+    }
+    pub fn holder(&self) -> &HtmlElement {
+        &self.holder
     }
     pub fn pos_x(&self) -> f32 {
         self.holder.get_bounding_client_rect().x() as f32

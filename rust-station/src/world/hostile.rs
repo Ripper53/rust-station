@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug)]
 pub struct HostileWorld<'a> {
     document: web_sys::Document,
-    world: World,
+    pub world: World,
     first_minions: Vec<(
         EntityID,
         AnimatedCharacter<FirstMinion<'a>>,
@@ -160,14 +160,17 @@ impl<'a> HostileWorld<'a> {
             rand::random_range(16.0..(self.world.bounds().width - 16.0)),
             12.0,
         );
-        const SPEED: f32 = 256.0;
+        const MIN_SPEED: f32 = 256.0 - 64.0;
+        const MAX_SPEED: f32 = 256.0;
+        let speed = rand::random_range(MIN_SPEED..MAX_SPEED);
         let (world, entity_id) = self
             .world
             .builder()
+            .add_enemy()
             .add_collider(BoxCollider::new(56.0, 8.0))
             .add_position_with_velocity(
                 position,
-                Velocity::target(target_position, position).normalize() * SPEED,
+                Velocity::target(target_position, position).normalize() * speed,
             )
             .finish();
         self.world = world;
@@ -182,7 +185,7 @@ impl<'a> HostileWorld<'a> {
         self.first_minions.push((
             entity_id,
             AnimatedCharacter::new(img, FirstMinion::new()),
-            FirstMinionBehavior::new(target_position, SPEED),
+            FirstMinionBehavior::new(target_position, speed),
             Character::new(HealthType::Normal(Health::new(1))),
         ));
         self

@@ -1,15 +1,23 @@
+mod angle;
 mod bounds;
 mod colliders;
 mod entity_builder;
 mod position;
+mod speed;
+mod target;
+mod turret;
 mod velocity;
+pub use angle::*;
 pub use bounds::*;
 pub use colliders::*;
 pub use entity_builder::*;
 pub use position::*;
+pub use speed::*;
+pub use target::*;
+pub use turret::*;
 pub use velocity::*;
 
-use crate::DeltaTime;
+use crate::{DeltaTime, utility};
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct EntityID(usize);
@@ -20,23 +28,42 @@ pub struct World {
     gravity: Gravity,
     free_entity_ids: Vec<EntityID>,
     entities: Vec<Entities>,
+    running_entities: Vec<Entities>,
+    build_commands: Vec<BuildCommand>,
 }
 
 #[derive(Debug)]
-struct Entities {
+struct BuildCommand {
+    entity_id: EntityID,
+    entities: Entities,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Entities {
     tag: EntityTag,
+    angle: RadiansAngle,
     position: Position,
     velocity: Velocity,
     box_collider: BoxCollider,
+    target: Target,
+    speed: Speed,
+    projectile_speed: ProjectileSpeed,
+    turret_state: TurretState,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct EntityTag(usize);
 impl EntityTag {
     pub const NONE: Self = EntityTag(0);
     pub const POSITION: Self = EntityTag(1 << 0);
     pub const VELOCITY: Self = EntityTag(1 << 1);
-    pub const COLLIDER: Self = EntityTag(1 << 2);
+    pub const ANGLE: Self = EntityTag(1 << 2);
+    pub const COLLIDER: Self = EntityTag(1 << 3);
+
+    pub const TURRET: Self = EntityTag(1 << 4);
+    pub const PROJECTILE: Self = EntityTag(1 << 5);
+    pub const ENEMY: Self = EntityTag(1 << 6);
+
     pub const fn is_any(&self, entity_tag: EntityTag) -> bool {
         (self.0 & entity_tag.0) != 0
     }
@@ -66,6 +93,27 @@ impl Gravity {
     }
 }
 
+macro_rules! get_free_entity_id {
+    ($world: ident, $latest_entities_length: ident) => {{
+        if let Some(id) = $world.free_entity_ids.pop() {
+            id
+        } else {
+            let entity_id = EntityID($latest_entities_length);
+            $latest_entities_length += 1;
+            entity_id
+        }
+    }};
+    ($world: ident) => {{
+        if let Some(id) = $world.free_entity_ids.pop() {
+            id
+        } else {
+            let entity_id = EntityID($world.entities.len());
+            $world.entities.push(Entities::default());
+            entity_id
+        }
+    }};
+}
+
 impl World {
     pub fn new(bounds: Bounds, gravity: Gravity) -> Self {
         World {
@@ -73,24 +121,31 @@ impl World {
             gravity,
             free_entity_ids: Vec::new(),
             entities: Vec::new(),
+            running_entities: Vec::new(),
+            build_commands: Vec::new(),
         }
     }
     pub fn bounds(&self) -> Bounds {
         self.bounds
     }
-    pub fn builder(mut self) -> EntityBuilder {
-        let id = if let Some(id) = self.free_entity_ids.pop() {
-            id
-        } else {
-            EntityID(self.entities.len())
-        };
-        EntityBuilder::new(self, id)
+    pub fn builder(mut self) -> EntityBuilder<WithWorld> {
+        let entity_id = get_free_entity_id!(self);
+        EntityBuilder::<WithWorld>::new(self, entity_id)
     }
     pub fn get_position(&self, entity_id: EntityID) -> Option<Position> {
         if let Some(entities) = self.entities.get(entity_id.0)
             && entities.tag.is_any(EntityTag::POSITION)
         {
             Some(entities.position)
+        } else {
+            None
+        }
+    }
+    pub fn get_angle(&self, entity_id: EntityID) -> Option<RadiansAngle> {
+        if let Some(entities) = self.entities.get(entity_id.0)
+            && entities.tag.is_any(EntityTag::ANGLE)
+        {
+            Some(entities.angle)
         } else {
             None
         }
@@ -159,11 +214,19 @@ impl World {
         }
     }
     pub fn elapsed_duration(&mut self, delta_time: PhysicsDeltaTime) {
-        for entities in self.entities.iter_mut() {
+        if let Some(build_command) = self.build_commands.pop() {
+            let entities = self.entities.get_mut(build_command.entity_id.0).unwrap();
+            *entities = build_command.entities;
+        }
+        let mut latest_entities_length = self.entities.len();
+        std::mem::swap(&mut self.entities, &mut self.running_entities);
+        for i in 0..self.running_entities.len() {
+            let entities = &self.running_entities[i];
             if entities
                 .tag
                 .is_all(EntityTag::POSITION | EntityTag::VELOCITY)
             {
+                let entities = &mut self.running_entities[i];
                 let position = &mut entities.position;
                 let velocity = &mut entities.velocity;
                 *velocity += self.gravity.0 * delta_time.0.value();
@@ -252,6 +315,83 @@ impl World {
                     };
                     Position::new(x, y)
                 };
+            }
+            let entities = &self.running_entities[i];
+            if entities.tag.is_any(EntityTag::TURRET) {
+                let position = entities.position;
+                match entities.turret_state {
+                    TurretState::FollowTarget => {
+                        if let Some(target) = self
+                            .running_entities
+                            .iter()
+                            .enumerate()
+                            .filter(|(ii, entities)| {
+                                *ii != i && entities.tag.is_any(EntityTag::ENEMY)
+                            })
+                            .map(|(_, entities)| {
+                                (
+                                    entities.position,
+                                    entities.position.distance_squared(position),
+                                )
+                            })
+                            .reduce(|(position_a, distance_a), (position_b, distance_b)| {
+                                if distance_a < distance_b {
+                                    (position_a, distance_a)
+                                } else {
+                                    (position_b, distance_b)
+                                }
+                            })
+                            .map(|(position, _)| position)
+                        {
+                            let entities = &mut self.running_entities[i];
+                            entities.target = Target::new(target);
+                        }
+                        let entities = &mut self.running_entities[i];
+                        let target = entities.target;
+                        let speed = entities.speed;
+                        let angle = &mut entities.angle;
+                        let target_pos = Velocity::target(target.into(), position);
+                        let target_angle = target_pos.y.atan2(target_pos.x);
+                        if (target_angle - angle.value()).rem_euclid(std::f32::consts::TAU)
+                            < std::f32::consts::FRAC_2_PI
+                        {
+                            entities.turret_state = TurretState::Shoot;
+                        }
+                        let speed: f32 = speed.into();
+                        *angle = RadiansAngle::new(utility::lerp_angle(
+                            (*angle).into(),
+                            target_angle,
+                            delta_time.0.value() * speed,
+                        ));
+                    }
+                    TurretState::Shoot => {
+                        /*let entities = &mut self.running_entities[i];
+                        let projectile_speed = entities.projectile_speed;
+                        entities.turret_state = TurretState::FollowTarget;
+                        let target_velocity = Velocity::target(entities.target.into(), position)
+                            .normalize()
+                            * projectile_speed.into();
+                        let entity_id = get_free_entity_id!(self, latest_entities_length);
+                        let entity_builder = EntityBuilder::<WithoutWorld>::new(entity_id);
+                        let (entity_id, entities) = entity_builder
+                            .projectile()
+                            .add_position(position)
+                            .add_collider(BoxCollider::new(4.0, 4.0))
+                            .add_velocity(target_velocity)
+                            .finish();
+                        self.build_commands.push(BuildCommand {
+                            entity_id,
+                            entities,
+                        });*/
+                    }
+                }
+            }
+        }
+        std::mem::swap(&mut self.entities, &mut self.running_entities);
+        if self.entities.len() < latest_entities_length {
+            let diff = latest_entities_length - self.entities.len();
+            for _ in 0..diff {
+                self.entities.push(Entities::default());
             }
         }
     }

@@ -91,6 +91,7 @@ img {
 
 .train>.train-cart>.weapon>img {
     position: absolute;
+    transform-origin: center 75%;
     width: 100%;
     height: 100%;
 }
