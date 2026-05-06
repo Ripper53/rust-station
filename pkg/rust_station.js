@@ -45,6 +45,9 @@ function __wbg_get_imports() {
         __wbg_add_1c62c72013dd70db: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             arg0.add(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
         }, arguments); },
+        __wbg_add_dd52c673c2cfa105: function() { return handleError(function (arg0, arg1, arg2) {
+            arg0.add(getStringFromWasm0(arg1, arg2));
+        }, arguments); },
         __wbg_appendChild_f8e0d8251588e3d1: function() { return handleError(function (arg0, arg1) {
             const ret = arg0.appendChild(arg1);
             return ret;
