@@ -19,7 +19,7 @@ jobs:
           toolchain: stable
 
       - run: cargo install wasm-pack
-      - run: wasm-pack build rust-station --target web --out-dir ../web/pkg --no-typescript
+      - run: wasm-pack build rust-station --target web --out-dir ../web/pkg --no-typescript --no-default-features
       - run: rm web/pkg/.gitignore web/pkg/package.json
 
       - name: Deploy

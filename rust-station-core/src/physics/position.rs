@@ -34,12 +34,29 @@ impl std::ops::AddAssign for Position {
     }
 }
 
+impl std::ops::Add for Position {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Position::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
 impl std::ops::Sub for Position {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Position {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
+        }
+    }
+}
+
+impl std::ops::Mul<f32> for Position {
+    type Output = Self;
+    fn mul(self, rhs: f32) -> Self::Output {
+        Position {
+            x: self.x * rhs,
+            y: self.y * rhs,
         }
     }
 }

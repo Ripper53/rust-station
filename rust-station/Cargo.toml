@@ -7,6 +7,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
+console_error_panic_hook = { version = "0.1.7", optional = true }
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 rand = { version = "0.10.1", features = ["thread_rng"] }
 rust-station-core = { path = "../rust-station-core" }
@@ -33,3 +34,6 @@ web-sys = { version = "0.3.95", features = [
     "Response",
     "Headers",
 ] }
+
+[features]
+default = ["console_error_panic_hook"]

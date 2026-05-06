@@ -2,15 +2,19 @@ mod angle;
 mod bounds;
 mod colliders;
 mod entity_builder;
+mod history;
 mod position;
 mod speed;
 mod target;
 mod turret;
 mod velocity;
+use std::collections::HashSet;
+
 pub use angle::*;
 pub use bounds::*;
 pub use colliders::*;
 pub use entity_builder::*;
+pub use history::*;
 pub use position::*;
 pub use speed::*;
 pub use target::*;
@@ -30,6 +34,8 @@ pub struct World {
     entities: Vec<Entities>,
     running_entities: Vec<Entities>,
     build_commands: Vec<BuildCommand>,
+    destroy_commands: HashSet<EntityID>,
+    history: std::collections::VecDeque<WorldHistory>,
 }
 
 #[derive(Debug)]
@@ -123,6 +129,8 @@ impl World {
             entities: Vec::new(),
             running_entities: Vec::new(),
             build_commands: Vec::new(),
+            destroy_commands: HashSet::new(),
+            history: std::collections::VecDeque::new(),
         }
     }
     pub fn bounds(&self) -> Bounds {
@@ -238,6 +246,12 @@ impl World {
                         let max = self.bounds.width - collider.size_x;
                         if new_pos >= max {
                             new_pos = max;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.x > 0.0 {
                                 velocity.x = 0.0;
                             }
@@ -247,6 +261,12 @@ impl World {
                         let mut new_pos = position.x + movement.x;
                         if new_pos <= 0.0 {
                             new_pos = 0.0;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.x < 0.0 {
                                 velocity.x = 0.0;
                             }
@@ -258,6 +278,12 @@ impl World {
                         let max = self.bounds.height - collider.size_y;
                         if new_pos >= max {
                             new_pos = max;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.y > 0.0 {
                                 velocity.y = 0.0;
                             }
@@ -267,6 +293,12 @@ impl World {
                         let mut new_pos = position.y + movement.y;
                         if new_pos <= 0.0 {
                             new_pos = 0.0;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.y < 0.0 {
                                 velocity.y = 0.0;
                             }
@@ -279,6 +311,12 @@ impl World {
                         let mut new_pos = position.x + movement.x;
                         if new_pos >= self.bounds.width {
                             new_pos = self.bounds.width;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.x > 0.0 {
                                 velocity.x = 0.0;
                             }
@@ -288,6 +326,12 @@ impl World {
                         let mut new_pos = position.x + movement.x;
                         if new_pos <= 0.0 {
                             new_pos = 0.0;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.x < 0.0 {
                                 velocity.x = 0.0;
                             }
@@ -298,6 +342,12 @@ impl World {
                         let mut new_pos = position.y + movement.y;
                         if new_pos >= self.bounds.height {
                             new_pos = self.bounds.height;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.y > 0.0 {
                                 velocity.y = 0.0;
                             }
@@ -307,6 +357,12 @@ impl World {
                         let mut new_pos = position.y + movement.y;
                         if new_pos <= 0.0 {
                             new_pos = 0.0;
+                            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                                if self.destroy_commands.insert(EntityID(i)) {
+                                    self.history
+                                        .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                                }
+                            }
                             if velocity.y < 0.0 {
                                 velocity.y = 0.0;
                             }
@@ -319,9 +375,17 @@ impl World {
             let entities = &self.running_entities[i];
             if entities.tag.is_any(EntityTag::TURRET) {
                 let position = entities.position;
+                let entities = &mut self.running_entities[i];
+                entities.position.y = self.bounds.height - 324.0;
                 match entities.turret_state {
-                    TurretState::FollowTarget => {
-                        if let Some(target) = self
+                    TurretState::FollowTarget {
+                        mut look_around_cooldown,
+                        mut shoot_cooldown,
+                    } => {
+                        look_around_cooldown =
+                            (look_around_cooldown - delta_time.0.value()).max(0.0);
+                        shoot_cooldown = (shoot_cooldown - delta_time.0.value()).max(0.0);
+                        let target_available = if let Some(target) = self
                             .running_entities
                             .iter()
                             .enumerate()
@@ -345,18 +409,40 @@ impl World {
                         {
                             let entities = &mut self.running_entities[i];
                             entities.target = Target::new(target);
-                        }
+                            true
+                        } else {
+                            if look_around_cooldown <= 0.0 {
+                                look_around_cooldown = rand::random_range(1.0..4.0);
+                                let angle = rand::random_range(
+                                    std::f32::consts::PI..std::f32::consts::PI * 2.0,
+                                );
+                                let entities = &mut self.running_entities[i];
+                                entities.target = Target::new(
+                                    entities.position + Position::new(angle.cos(), angle.sin()),
+                                );
+                            }
+                            false
+                        };
                         let entities = &mut self.running_entities[i];
                         let target = entities.target;
                         let speed = entities.speed;
                         let angle = &mut entities.angle;
                         let target_pos = Velocity::target(target.into(), position);
                         let target_angle = target_pos.y.atan2(target_pos.x);
-                        if (target_angle - angle.value()).rem_euclid(std::f32::consts::TAU)
-                            < std::f32::consts::FRAC_2_PI
+                        entities.turret_state = if target_available
+                            && (target_angle - angle.value())
+                                .abs()
+                                .rem_euclid(std::f32::consts::TAU)
+                                < std::f32::consts::FRAC_1_PI
+                            && shoot_cooldown <= 0.0
                         {
-                            entities.turret_state = TurretState::Shoot;
-                        }
+                            TurretState::Shoot
+                        } else {
+                            TurretState::FollowTarget {
+                                look_around_cooldown,
+                                shoot_cooldown,
+                            }
+                        };
                         let speed: f32 = speed.into();
                         *angle = RadiansAngle::new(utility::lerp_angle(
                             (*angle).into(),
@@ -365,24 +451,53 @@ impl World {
                         ));
                     }
                     TurretState::Shoot => {
-                        /*let entities = &mut self.running_entities[i];
+                        let entities = &mut self.running_entities[i];
                         let projectile_speed = entities.projectile_speed;
-                        entities.turret_state = TurretState::FollowTarget;
-                        let target_velocity = Velocity::target(entities.target.into(), position)
-                            .normalize()
-                            * projectile_speed.into();
+                        entities.turret_state = TurretState::FollowTarget {
+                            look_around_cooldown: 0.0,
+                            shoot_cooldown: 1.0 / 8.0,
+                        };
+                        let position = position
+                            + Position::new(24.0, 42.0)
+                            + entities.angle.into_position() * 16.0;
+                        let target_velocity =
+                            entities.angle.into_position() * projectile_speed.into();
+                        let target_velocity = Velocity::new(target_velocity.x, target_velocity.y);
                         let entity_id = get_free_entity_id!(self, latest_entities_length);
                         let entity_builder = EntityBuilder::<WithoutWorld>::new(entity_id);
                         let (entity_id, entities) = entity_builder
                             .projectile()
                             .add_position(position)
-                            .add_collider(BoxCollider::new(4.0, 4.0))
+                            .add_collider(BoxCollider::new(16.0, 16.0))
                             .add_velocity(target_velocity)
                             .finish();
                         self.build_commands.push(BuildCommand {
                             entity_id,
                             entities,
-                        });*/
+                        });
+                        self.history.push_back(WorldHistory::SpawnProjectile {
+                            entity_id,
+                            position,
+                        });
+                    }
+                }
+            }
+
+            let entities = &self.running_entities[i];
+            if entities.tag.is_any(EntityTag::PROJECTILE) {
+                let col = entities.box_collider.with_position(entities.position);
+                for (ii, e) in self.running_entities.iter().enumerate() {
+                    if ii != i && e.tag.is_any(EntityTag::ENEMY) {
+                        if col.overlap(e.box_collider.with_position(e.position)) {
+                            if self.destroy_commands.insert(EntityID(i)) {
+                                self.history
+                                    .push_back(WorldHistory::DestroyProjectile(EntityID(i)));
+                            }
+                            if self.destroy_commands.insert(EntityID(ii)) {
+                                self.history
+                                    .push_back(WorldHistory::DestroyEnemy(EntityID(ii)));
+                            }
+                        }
                     }
                 }
             }
@@ -394,6 +509,11 @@ impl World {
                 self.entities.push(Entities::default());
             }
         }
+        for entity_id in self.destroy_commands.iter().copied() {
+            self.entities[entity_id.0].tag = EntityTag::NONE;
+            self.free_entity_ids.push(entity_id);
+        }
+        self.destroy_commands.clear();
     }
     pub fn nearest_target(&self, position: Position) -> Option<Position> {
         let mut nearest_target: Option<(Position, DistanceSquared)> = None;
@@ -412,6 +532,9 @@ impl World {
             }
         }
         nearest_target.map(|(pos, _dis)| pos)
+    }
+    pub fn pop_history(&mut self) -> Option<WorldHistory> {
+        self.history.pop_front()
     }
 }
 

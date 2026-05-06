@@ -29,9 +29,9 @@ impl TurretVisual {
             .unwrap();
         barrel_image_element.set_src("images/train/TrainGunBarrel.png");
         barrel_image_element.class_list().add_1("barrel").unwrap();
-        weapon_element.append_child(&base_image_element);
-        weapon_element.append_child(&barrel_image_element);
-        body.append_child(&weapon_element);
+        weapon_element.append_child(&base_image_element).unwrap();
+        weapon_element.append_child(&barrel_image_element).unwrap();
+        body.append_child(&weapon_element).unwrap();
         TurretVisual {
             weapon_element,
             base_image_element,
@@ -55,7 +55,10 @@ impl TurretVisual {
         if let Some(angle) = world.get_angle(entity_id) {
             self.barrel_image_element
                 .style()
-                .set_property("transform", &format!("rotate({}rad)", angle.value()))
+                .set_property(
+                    "transform",
+                    &format!("rotate({}rad)", angle.value() + std::f32::consts::FRAC_PI_2),
+                )
                 .unwrap();
         }
     }

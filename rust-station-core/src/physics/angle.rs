@@ -1,4 +1,4 @@
-use crate::physics::Velocity;
+use crate::physics::{Position, Velocity};
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct RadiansAngle(f32);
@@ -9,6 +9,9 @@ impl RadiansAngle {
     }
     pub fn value(&self) -> f32 {
         self.0
+    }
+    pub fn into_position(self) -> Position {
+        Position::new(self.0.cos(), self.0.sin())
     }
 }
 

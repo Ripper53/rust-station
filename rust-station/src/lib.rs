@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use rust_station_core::{
     DeltaTime,
     commands::create_command_channel,
-    physics::{Bounds, Position, ProjectileSpeed, RadiansAngle, Speed},
+    physics::{Bounds, Position, ProjectileSpeed, RadiansAngle, Speed, WorldHistory},
     train::{ParallaxUpdateResponse, TrainBackground},
 };
 use wasm_bindgen::prelude::*;
@@ -12,7 +14,7 @@ use crate::{
     commands::WorldCommand,
     parallax::ParallaxLayer,
     train::{TrainBounce, TrainCartVisual, TurretVisual},
-    world::{create_world, hostile::HostileWorld},
+    world::{ProjectileVisual, create_world, hostile::HostileWorld},
 };
 
 mod anim;
@@ -24,6 +26,9 @@ mod world;
 
 #[wasm_bindgen(start)]
 pub fn start() {
+    #[cfg(debug_assertions)]
+    console_error_panic_hook::set_once();
+
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let body = document.body().unwrap();
@@ -204,22 +209,24 @@ pub fn start() {
     };
     let mut turret_weapons = {
         let mut world = hostile_world.borrow_mut().take().unwrap();
+        const ROTATION_SPEED: Speed = Speed::new(std::f32::consts::PI);
+        const PROJECTILE_SPEED: ProjectileSpeed = ProjectileSpeed::new(Speed::new(512.0));
         let (w, entity_id_a) = world
             .world
             .builder()
             .turret()
-            .add_position(Position::new(196.0, 4.0))
+            .add_position(Position::new(196.0, height - 324.0))
             .add_angle(RadiansAngle::new(0.0))
-            .add_rotation_speed(Speed::new(1.0))
-            .add_projectile_speed(ProjectileSpeed::new(Speed::new(4.0)))
+            .add_rotation_speed(ROTATION_SPEED)
+            .add_projectile_speed(PROJECTILE_SPEED)
             .finish();
         let (w, entity_id_b) = w
             .builder()
             .turret()
-            .add_position(Position::new(360.0, 4.0))
+            .add_position(Position::new(360.0, height - 324.0))
             .add_angle(RadiansAngle::new(0.0))
-            .add_rotation_speed(Speed::new(1.0))
-            .add_projectile_speed(ProjectileSpeed::new(Speed::new(4.0)))
+            .add_rotation_speed(ROTATION_SPEED)
+            .add_projectile_speed(PROJECTILE_SPEED)
             .finish();
         world.world = w;
         *hostile_world.borrow_mut() = Some(world);

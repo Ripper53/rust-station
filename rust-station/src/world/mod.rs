@@ -11,6 +11,8 @@ use web_sys::{HtmlElement, HtmlImageElement};
 use crate::characters::{AnimatedCharacter, OswinUpdate};
 
 pub mod hostile;
+mod projectile;
+pub use projectile::*;
 
 pub fn create_world<'a, 'r>(
     body: &'a HtmlElement,

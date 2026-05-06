@@ -55,21 +55,11 @@ impl<World> EntityBuilder<World> {
     }
 }
 impl EntityBuilder<WithWorld> {
-    pub(crate) const fn new(world: World, entity_id: EntityID) -> Self {
+    pub(crate) fn new(world: World, entity_id: EntityID) -> Self {
         EntityBuilder {
             world: WithWorld(world),
             entity_id,
-            entities: Entities {
-                tag: EntityTag::NONE,
-                position: Position::new(0.0, 0.0),
-                velocity: Velocity::new(0.0, 0.0),
-                box_collider: BoxCollider::new(0.0, 0.0),
-                angle: RadiansAngle::new(0.0),
-                target: Target::new(Position::new(0.0, 0.0)),
-                speed: Speed::new(0.0),
-                projectile_speed: ProjectileSpeed::new(Speed::new(0.0)),
-                turret_state: super::TurretState::FollowTarget,
-            },
+            entities: Entities::default(),
         }
     }
     pub fn finish(self) -> (World, EntityID) {

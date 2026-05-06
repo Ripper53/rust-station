@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rand::seq::IndexedRandom;
 use rust_station_core::{
     DeltaTime,
@@ -7,7 +9,7 @@ use rust_station_core::{
     enemies::wave::{EnemyWaves, WaveAmount},
     physics::{
         Bounds, BoxCollider, ColliderOverlap, EntityID, Gravity, PhysicsDeltaTime, Position,
-        Velocity, World,
+        Velocity, World, WorldHistory,
     },
 };
 use wasm_bindgen::JsCast;
@@ -17,11 +19,13 @@ use web_sys::{Request, RequestInit};
 use crate::{
     characters::{AnimatedCharacter, FirstMinionUpdate},
     commands::{TrainCartID, WorldCommand},
+    world::ProjectileVisual,
 };
 
 #[derive(Debug)]
 pub struct HostileWorld<'a> {
     document: web_sys::Document,
+    body: web_sys::HtmlElement,
     pub world: World,
     first_minions: Vec<(
         EntityID,
@@ -36,9 +40,11 @@ pub struct HostileWorld<'a> {
         Character,
     )>,
     train_cart_positions: [(Position, Bounds); 2],
+    projectiles: HashMap<rust_station_core::physics::EntityID, ProjectileVisual>,
     command_sender: CommandSender<WorldCommand>,
     wave: WaveAmount,
     enemy_waves: std::rc::Rc<std::cell::RefCell<Option<EnemyWaves>>>,
+    to_destroy_enemies: Vec<EntityID>,
 }
 
 impl<'a> HostileWorld<'a> {
@@ -54,15 +60,19 @@ impl<'a> HostileWorld<'a> {
             *w.borrow_mut() = Some(enemy_waves);
         });
         let world = World::new(bounds, Gravity::new(Velocity::new(0.0, 0.0)));
+        let document = web_sys::window().unwrap().document().unwrap();
         HostileWorld {
             command_sender,
-            document: web_sys::window().unwrap().document().unwrap(),
+            body: document.body().unwrap(),
+            document,
             world,
             first_minions: Vec::new(),
             first_minions_switch: Vec::new(),
             train_cart_positions,
+            projectiles: HashMap::new(),
             wave: WaveAmount::new(0),
             enemy_waves,
+            to_destroy_enemies: Vec::new(),
         }
     }
     pub fn set_bounds(&mut self, bounds: Bounds) {
@@ -87,6 +97,29 @@ impl<'a> HostileWorld<'a> {
                 }
             }
         }
+        for (entity_id, projectile) in self.projectiles.iter_mut() {
+            projectile.update(*entity_id, &self.world);
+        }
+        while let Some(history) = self.world.pop_history() {
+            match history {
+                WorldHistory::SpawnProjectile {
+                    entity_id,
+                    position,
+                } => {
+                    let _ = self.projectiles.insert(
+                        entity_id,
+                        ProjectileVisual::new(&self.document, &self.body, position),
+                    );
+                }
+                WorldHistory::DestroyProjectile(entity_id) => {
+                    let projectile = self.projectiles.remove(&entity_id).unwrap();
+                    projectile.destroy();
+                }
+                WorldHistory::DestroyEnemy(entity_id) => {
+                    self.to_destroy_enemies.push(entity_id);
+                }
+            }
+        }
         while let Some((
             entity_id,
             AnimatedCharacter {
@@ -97,54 +130,65 @@ impl<'a> HostileWorld<'a> {
             c,
         )) = self.first_minions.pop()
         {
-            character = character.update(AnimationDeltaTime::new(delta_time), &mut image);
-            if let Some((position, velocity)) = self.world.get_dynamic_position(entity_id) {
-                if let Some(collider) = self.world.get_collider(entity_id) {
-                    let collider = collider.with_position(position);
-                    let r = self.train_cart_positions.iter_mut().enumerate().find_map(
-                        |(i, (position, bounds, ..))| {
-                            let position = Position::new(position.x, position.y + 64.0);
-                            if collider.overlap(
-                                BoxCollider::new(bounds.width, bounds.height)
-                                    .with_position(position),
-                            ) {
-                                Some(i)
-                            } else {
-                                None
-                            }
-                        },
-                    );
-                    if let Some(i) = r {
-                        self.command_sender
-                            .send(WorldCommand::DamageTrainCart(TrainCartID::new(i)));
-                        image.remove();
-                        self.world.remove_entity(entity_id);
-                        continue;
+            if let Some(index) = self
+                .to_destroy_enemies
+                .iter()
+                .enumerate()
+                .find(|(_, id)| entity_id == **id)
+                .map(|(i, _)| i)
+            {
+                let _ = self.to_destroy_enemies.swap_remove(index);
+                image.remove();
+            } else {
+                character = character.update(AnimationDeltaTime::new(delta_time), &mut image);
+                if let Some((position, velocity)) = self.world.get_dynamic_position(entity_id) {
+                    if let Some(collider) = self.world.get_collider(entity_id) {
+                        let collider = collider.with_position(position);
+                        let r = self.train_cart_positions.iter_mut().enumerate().find_map(
+                            |(i, (position, bounds, ..))| {
+                                let position = Position::new(position.x, position.y + 64.0);
+                                if collider.overlap(
+                                    BoxCollider::new(bounds.width, bounds.height)
+                                        .with_position(position),
+                                ) {
+                                    Some(i)
+                                } else {
+                                    None
+                                }
+                            },
+                        );
+                        if let Some(i) = r {
+                            self.command_sender
+                                .send(WorldCommand::DamageTrainCart(TrainCartID::new(i)));
+                            image.remove();
+                            self.world.remove_entity(entity_id);
+                            continue;
+                        }
                     }
+                    image
+                        .style()
+                        .set_property("left", &format!("{}px", position.x - 4.0))
+                        .unwrap();
+                    image
+                        .style()
+                        .set_property("top", &format!("{}px", position.y - 40.0))
+                        .unwrap();
+                    image
+                        .style()
+                        .set_property(
+                            "transform",
+                            &format!("scaleX({})", if velocity.x > 0.0 { 1 } else { -1 }),
+                        )
+                        .unwrap();
                 }
-                image
-                    .style()
-                    .set_property("left", &format!("{}px", position.x - 4.0))
-                    .unwrap();
-                image
-                    .style()
-                    .set_property("top", &format!("{}px", position.y - 40.0))
-                    .unwrap();
-                image
-                    .style()
-                    .set_property(
-                        "transform",
-                        &format!("scaleX({})", if velocity.x > 0.0 { 1 } else { -1 }),
-                    )
-                    .unwrap();
+                behavior.update_first_minion(&mut self.world, entity_id, delta_time);
+                self.first_minions_switch.push((
+                    entity_id,
+                    AnimatedCharacter::new(image, character),
+                    behavior,
+                    c,
+                ));
             }
-            behavior.update_first_minion(&mut self.world, entity_id, delta_time);
-            self.first_minions_switch.push((
-                entity_id,
-                AnimatedCharacter::new(image, character),
-                behavior,
-                c,
-            ));
         }
         std::mem::swap(&mut self.first_minions, &mut self.first_minions_switch);
         self
@@ -160,8 +204,8 @@ impl<'a> HostileWorld<'a> {
             rand::random_range(16.0..(self.world.bounds().width - 16.0)),
             12.0,
         );
-        const MIN_SPEED: f32 = 256.0 - 64.0;
-        const MAX_SPEED: f32 = 256.0;
+        const MIN_SPEED: f32 = 192.0;
+        const MAX_SPEED: f32 = MIN_SPEED + 64.0;
         let speed = rand::random_range(MIN_SPEED..MAX_SPEED);
         let (world, entity_id) = self
             .world
