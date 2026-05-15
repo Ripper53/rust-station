@@ -2,4 +2,40 @@
 first_minion = 5
 
 [[waves]]
-first_minion = 5
+first_minion = 10
+
+[[waves]]
+first_minion = 20
+
+[[waves]]
+delay = 10
+first_minion = 40
+
+[[waves]]
+first_minion = 100
+
+[[waves]]
+delay = 1
+repeat = 4
+first_minion = 10
+
+[[waves]]
+delay = 1
+repeat = 8
+first_minion = 20
+
+[[waves]]
+delay = 8
+first_minion = 30
+
+[[waves]]
+delay = 10
+first_minion = 40
+
+[[waves]]
+delay = 12
+first_minion = 100
+
+[[waves]]
+delay = 12
+first_minion = 800
