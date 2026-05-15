@@ -10,6 +10,11 @@ impl BoxCollider {
     pub const fn new(size_x: f32, size_y: f32) -> Self {
         BoxCollider { size_x, size_y }
     }
+    pub const fn scale(mut self, scale: f32) -> Self {
+        self.size_x *= scale;
+        self.size_y *= scale;
+        self
+    }
     pub const fn with_position(self, position: Position) -> ColliderPosition<Self> {
         ColliderPosition {
             position,

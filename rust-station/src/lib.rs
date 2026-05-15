@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use rust_station_core::{
     DeltaTime,
     commands::create_command_channel,
-    physics::{Bounds, Position, ProjectileSpeed, RadiansAngle, Speed, WorldHistory},
+    physics::{Bounds, Position, ProjectileSpeed, RadiansAngle, Speed},
     train::{ParallaxUpdateResponse, TrainBackground},
 };
 use wasm_bindgen::prelude::*;
@@ -14,7 +12,7 @@ use crate::{
     commands::WorldCommand,
     parallax::ParallaxLayer,
     train::{TrainBounce, TrainCartVisual, TurretVisual},
-    world::{ProjectileVisual, create_world, hostile::HostileWorld},
+    world::{create_world, hostile::HostileWorld},
 };
 
 mod anim;
@@ -32,8 +30,8 @@ pub fn start() {
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let body = document.body().unwrap();
-    let width = window.inner_width().unwrap().as_f64().unwrap() as f32;
-    let height = window.inner_height().unwrap().as_f64().unwrap() as f32;
+    let width = body.client_width() as f32;
+    let height = body.client_height() as f32;
 
     let f: std::rc::Rc<std::cell::RefCell<Option<ScopedClosure<'_, dyn FnMut(f64)>>>> =
         std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -157,15 +155,13 @@ pub fn start() {
             get_train_cart_positions(),
         ))));
         let win = web_sys::window().unwrap();
+        let body = document.body().unwrap();
         let hostile_world_pointer = std::rc::Rc::clone(&hostile_world);
         let train_carts = std::rc::Rc::clone(&train_carts);
         let card_world_0 = std::rc::Rc::clone(&card_world_0);
         let card_world_1 = std::rc::Rc::clone(&card_world_1);
         let closure = Closure::<dyn FnMut()>::new(move || {
-            let bounds = Bounds::new(
-                win.inner_width().unwrap().as_f64().unwrap() as f32,
-                win.inner_height().unwrap().as_f64().unwrap() as f32,
-            );
+            let bounds = Bounds::new(body.client_width() as f32, body.client_height() as f32);
             hostile_world_pointer
                 .borrow_mut()
                 .as_mut()
@@ -209,8 +205,8 @@ pub fn start() {
     };
     let mut turret_weapons = {
         let mut world = hostile_world.borrow_mut().take().unwrap();
-        const ROTATION_SPEED: Speed = Speed::new(std::f32::consts::PI);
-        const PROJECTILE_SPEED: ProjectileSpeed = ProjectileSpeed::new(Speed::new(512.0));
+        const ROTATION_SPEED: Speed = Speed::new(std::f32::consts::PI * 4.0);
+        const PROJECTILE_SPEED: ProjectileSpeed = ProjectileSpeed::new(Speed::new(1028.0));
         let (w, entity_id_a) = world
             .world
             .builder()
@@ -228,14 +224,46 @@ pub fn start() {
             .add_rotation_speed(ROTATION_SPEED)
             .add_projectile_speed(PROJECTILE_SPEED)
             .finish();
+        let (w, entity_id_c) = w
+            .builder()
+            .turret()
+            .add_position(Position::new(638.0, height - 324.0))
+            .add_angle(RadiansAngle::new(0.0))
+            .add_rotation_speed(ROTATION_SPEED)
+            .add_projectile_speed(PROJECTILE_SPEED)
+            .finish();
+        let (w, entity_id_d) = w
+            .builder()
+            .turret()
+            .add_position(Position::new(870.0, height - 324.0))
+            .add_angle(RadiansAngle::new(0.0))
+            .add_rotation_speed(ROTATION_SPEED)
+            .add_projectile_speed(PROJECTILE_SPEED)
+            .finish();
         world.world = w;
         *hostile_world.borrow_mut() = Some(world);
         let train_carts = train_carts.borrow();
-        let train_cart = train_carts.get(0).unwrap();
-        let train_cart = train_cart.holder();
+        let train_cart_a = train_carts.get(0).unwrap();
+        let train_cart_a = train_cart_a.holder();
+        let train_cart_b = train_carts.get(1).unwrap();
+        let train_cart_b = train_cart_b.holder();
         let train_weapons = vec![
-            (entity_id_a, TurretVisual::new(&document, train_cart)),
-            (entity_id_b, TurretVisual::new(&document, train_cart)),
+            (
+                entity_id_a,
+                TurretVisual::new(&document, HtmlElement::clone(train_cart_a), 0.0),
+            ),
+            (
+                entity_id_b,
+                TurretVisual::new(&document, HtmlElement::clone(train_cart_a), 0.0),
+            ),
+            (
+                entity_id_c,
+                TurretVisual::new(&document, HtmlElement::clone(train_cart_b), -1024.0),
+            ),
+            (
+                entity_id_d,
+                TurretVisual::new(&document, HtmlElement::clone(train_cart_b), -1024.0),
+            ),
         ];
         train_weapons
     };

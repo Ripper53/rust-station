@@ -44,6 +44,8 @@ pub struct HostileWorld<'a> {
     command_sender: CommandSender<WorldCommand>,
     wave: WaveAmount,
     enemy_waves: std::rc::Rc<std::cell::RefCell<Option<EnemyWaves>>>,
+    enemy_waves_timer: f32,
+    repeat_count: usize,
     to_destroy_enemies: Vec<EntityID>,
 }
 
@@ -72,6 +74,8 @@ impl<'a> HostileWorld<'a> {
             projectiles: HashMap::new(),
             wave: WaveAmount::new(0),
             enemy_waves,
+            enemy_waves_timer: 0.0,
+            repeat_count: 0,
             to_destroy_enemies: Vec::new(),
         }
     }
@@ -85,15 +89,23 @@ impl<'a> HostileWorld<'a> {
         self.world
             .elapsed_duration(PhysicsDeltaTime::new(delta_time));
         {
-            let r = self.enemy_waves.borrow();
-            if let Some(ref enemy_waves) = *r
-                && let Some(enemy_wave) = enemy_waves.get_wave(self.wave)
-            {
-                self.wave = WaveAmount::new(self.wave.amount() + 1);
-                let max = enemy_wave.first_minion.amount();
-                drop(r);
-                for _ in 0..max {
-                    self = self.create_first_minion(body);
+            self.enemy_waves_timer = (self.enemy_waves_timer - delta_time.value()).max(0.0);
+            if self.enemy_waves_timer <= 0.0 {
+                let r = self.enemy_waves.borrow();
+                if let Some(ref enemy_waves) = *r
+                    && let Some(enemy_wave) = enemy_waves.get_wave(self.wave)
+                {
+                    self.repeat_count += 1;
+                    if self.repeat_count >= enemy_wave.repeat.count() {
+                        self.repeat_count = 0;
+                        self.wave = WaveAmount::new(self.wave.amount() + 1);
+                    }
+                    self.enemy_waves_timer += enemy_wave.delay.value();
+                    let max = enemy_wave.first_minion.amount();
+                    drop(r);
+                    for _ in 0..max {
+                        self = self.create_first_minion(body);
+                    }
                 }
             }
         }

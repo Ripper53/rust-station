@@ -3,13 +3,15 @@ use wasm_bindgen::JsCast;
 
 #[derive(Debug)]
 pub struct TurretVisual {
+    cart: web_sys::HtmlElement,
     weapon_element: web_sys::HtmlElement,
     base_image_element: web_sys::HtmlImageElement,
     barrel_image_element: web_sys::HtmlImageElement,
+    offset_x: f32,
 }
 
 impl TurretVisual {
-    pub fn new(document: &web_sys::Document, body: &web_sys::Element) -> Self {
+    pub fn new(document: &web_sys::Document, body: web_sys::HtmlElement, offset_x: f32) -> Self {
         let weapon_element = document
             .create_element("div")
             .unwrap()
@@ -33,9 +35,11 @@ impl TurretVisual {
         weapon_element.append_child(&barrel_image_element).unwrap();
         body.append_child(&weapon_element).unwrap();
         TurretVisual {
+            cart: body,
             weapon_element,
             base_image_element,
             barrel_image_element,
+            offset_x,
         }
     }
     pub fn destroy(self) {
@@ -43,13 +47,17 @@ impl TurretVisual {
     }
     pub fn update(&mut self, entity_id: EntityID, world: &World) {
         if let Some(position) = world.get_position(entity_id) {
+            let rect = self.cart.get_bounding_client_rect();
             self.weapon_element
                 .style()
-                .set_property("left", &format!("{}px", position.x))
+                .set_property(
+                    "left",
+                    &format!("{}px", position.x + rect.x() as f32 + self.offset_x),
+                )
                 .unwrap();
             self.weapon_element
                 .style()
-                .set_property("top", &format!("{}px", position.y))
+                .set_property("top", &format!("{}px", position.y - rect.y() as f32))
                 .unwrap();
         }
         if let Some(angle) = world.get_angle(entity_id) {

@@ -1,6 +1,6 @@
 use crate::physics::{
     BoxCollider, Entities, EntityID, EntityTag, Position, ProjectileSpeed, RadiansAngle, Speed,
-    Target, Velocity, World,
+    Velocity, World,
 };
 
 #[derive(Debug)]
