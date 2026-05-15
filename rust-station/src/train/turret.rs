@@ -45,14 +45,17 @@ impl TurretVisual {
     pub fn destroy(self) {
         self.weapon_element.remove();
     }
-    pub fn update(&mut self, entity_id: EntityID, world: &World) {
+    pub fn update(&mut self, entity_id: EntityID, world: &World, window_scroll_x: f32) {
         if let Some(position) = world.get_position(entity_id) {
             let rect = self.cart.get_bounding_client_rect();
             self.weapon_element
                 .style()
                 .set_property(
                     "left",
-                    &format!("{}px", position.x + rect.x() as f32 + self.offset_x),
+                    &format!(
+                        "{}px",
+                        position.x + rect.x() as f32 + self.offset_x + window_scroll_x
+                    ),
                 )
                 .unwrap();
             self.weapon_element

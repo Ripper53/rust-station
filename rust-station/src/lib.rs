@@ -283,7 +283,7 @@ pub fn start() {
             let mut hw = hostile_world.borrow_mut().take().unwrap();
             hw = hw.update(delta_time, &body);
             for (entity_id, turret) in turret_weapons.iter_mut() {
-                turret.update(*entity_id, &hw.world);
+                turret.update(*entity_id, &hw.world, window.scroll_x().unwrap() as f32);
             }
             *hostile_world.borrow_mut() = Some(hw);
         }
