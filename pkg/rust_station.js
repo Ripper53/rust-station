@@ -206,6 +206,10 @@ function __wbg_get_imports() {
             const ret = Promise.resolve(arg0);
             return ret;
         },
+        __wbg_scrollX_e1552bc93346f0ce: function() { return handleError(function (arg0) {
+            const ret = arg0.scrollX;
+            return ret;
+        }, arguments); },
         __wbg_setProperty_d6673329a267577b: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             arg0.setProperty(getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4));
         }, arguments); },
